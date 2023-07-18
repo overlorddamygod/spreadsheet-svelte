@@ -9,13 +9,13 @@
   let timeout = null;
 
   onMount(() => {
-    const grid = document.querySelector('.grid');
-
-    grid.addEventListener('scroll', function () {
+    const worksheet = document.querySelector('.worksheet');
+    console.log(worksheet);
+    worksheet.addEventListener('scroll', function () {
       console.log('SAD');
-      const scrollHeight = grid.scrollHeight;
-      const scrollTop = grid.scrollTop;
-      const clientHeight = grid.clientHeight;
+      const scrollHeight = worksheet.scrollHeight;
+      const scrollTop = worksheet.scrollTop;
+      const clientHeight = worksheet.clientHeight;
 
       if (scrollHeight - scrollTop === clientHeight) {
         if (timeout) {
@@ -31,10 +31,10 @@
       }
     });
 
-    grid.addEventListener('scroll', function () {
-      const scrollWidth = grid.scrollWidth;
-      const scrollLeft = grid.scrollLeft;
-      const clientWidth = grid.clientWidth;
+    worksheet.addEventListener('scroll', function () {
+      const scrollWidth = worksheet.scrollWidth;
+      const scrollLeft = worksheet.scrollLeft;
+      const clientWidth = worksheet.clientWidth;
 
       if (scrollWidth - scrollLeft === clientWidth) {
         if (timeout) {
@@ -194,10 +194,15 @@
       />
     </div>
   </div>
-
-  <div class="grid">
-    <div class="row header">
-      <div class="row-index" />
+  <section
+    class="flex-1 overflow-auto flex flex-col lol border border-yellow-500"
+  >
+    <div
+      class="worksheet grid flex-1 w-full"
+      style="grid-template-rows: repeat({sheet.rows +
+        1},auto);grid-template-columns: repeat({sheet.columns + 1},auto)"
+    >
+      <div class="row-index sticky left-0" />
       {#each {length: sheet.columns} as _, j}
         <div
           class="cell relative column"
@@ -208,16 +213,19 @@
           <div class="cell-resizer" />
         </div>
       {/each}
-    </div>
-    {#each {length: sheet.rows} as _, i}
-      <div class="row">
+      {#each {length: sheet.rows} as _, i}
+        <!-- <div class="row"> -->
         <div class="row-index">{i + 1}</div>
         {#each {length: sheet.columns} as _, j}
           <!-- svelte-ignore a11y-click-events-have-key-events -->
           <!-- svelte-ignore a11y-no-static-element-interactions -->
           <div
             class="cell"
-            style="width: {sheet.columnsWidth[j] || 150}px; background-color: {sheet.cells[`${i}-${j}`]?.background || '#242424'}; color: {sheet.cells[`${i}-${j}`]?.color || 'rgba(255, 255, 255, 0.87)'}"
+            style="width: {sheet.columnsWidth[j] ||
+              150}px; background-color: {sheet.cells[`${i}-${j}`]?.background ||
+              '#242424'}; color: {sheet.cells[`${i}-${j}`]?.color ||
+              'rgba(255, 255, 255, 0.87)'}"
+            data-row={i}
             data-col={j}
             class:justify-start={sheet.cells[`${i}-${j}`]?.align === 'left'}
             class:justify-center={sheet.cells[`${i}-${j}`]?.align === 'center'}
@@ -259,9 +267,10 @@
             {/if}
           </div>
         {/each}
-      </div>
-    {/each}
-  </div>
+        <!-- </div> -->
+      {/each}
+    </div>
+  </section>
   <div class="bottom-bar">Bottom</div>
 </main>
 
@@ -286,19 +295,25 @@
     top: 0;
     z-index: 1;
   }
-  .grid {
-    overflow: auto;
-    flex: 1;
-    /* height: 300px; */
-    /* overflow: hidden; */
+
+  .horizontal-scroll-container {
+    display: flex;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+  }
+
+  .worksheet {
+    overflow: scroll;
   }
   .back {
     z-index: -1;
   }
   .row {
-    display: flex;
-    width: 100%;
-    height: 100%;
+    display: grid;
+    grid-template-columns: repeat(16, auto);
+    /* grid-template-rows: repeat(20, auto); */
+    /* width: 100%; */
+    /* height: 100%; */
   }
 
   .row-index {
@@ -308,8 +323,8 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    position: sticky;
-    left: 0;
+    /* position: sticky; */
+    /* left: 0; */
   }
   .header .column {
     width: 150px;
@@ -326,8 +341,8 @@
     border: 1px solid black;
     display: flex;
     padding: 5px;
-    /* justify-content: center; horizontally center */
-    /* align-items: center; vertically center */
+    justify-content: center;
+    align-items: center;
   }
 
   .cell input {
