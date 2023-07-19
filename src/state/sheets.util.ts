@@ -1,4 +1,5 @@
 import type {Cell} from '../types';
+import go from "../wasm"
 
 const defaultCell: () => Cell = () => {
   return {
@@ -10,5 +11,9 @@ const defaultCell: () => Cell = () => {
     }
   };
 };
+
+const calculate = () => {
+
+}
 
 export {defaultCell};

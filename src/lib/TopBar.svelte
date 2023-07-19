@@ -115,7 +115,7 @@
     </div>
     <input
       class="ignore-select w-full px-2"
-      value={selectedCell?.value || ''}
+      value={selectedCell?.formula || selectedCell?.value || ''}
       on:change={e => {
         setCellValue(
           $appState.currentWorkBook,

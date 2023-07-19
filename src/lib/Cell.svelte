@@ -46,7 +46,7 @@
       class="w-full h-full background-black"
       id="cell-input"
       style="font-style: {cell?.formatting?.italic ? 'italic' : 'normal'}"
-      value={cell?.value || ''}
+      value={cell?.formula || cell?.value || ''}
       class:text-left={cell?.formatting?.align === 'left'}
       class:text-center={cell?.formatting?.align === 'center'}
       class:text-right={cell?.formatting?.align === 'right'}

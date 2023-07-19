@@ -10,9 +10,11 @@ type Cell = {
     bgColor?: string;
     align?: Align;
   };
+  formula?: string;
   rowSpan?: number;
   colSpan?: number;
   isMerged?: boolean;
+  dependants?: string[];
 };
 
 type Cells = {

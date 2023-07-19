@@ -1,6 +1,7 @@
 import {writable, type Updater} from 'svelte/store';
 import type {Align, Sheet, WorkBook} from '../types';
 import {defaultCell} from './sheets.util';
+import appState from '.';
 
 const workbook = writable<WorkBook>({
   worksheets: [
@@ -66,6 +67,12 @@ const incrementColumn = (sheetNo: number, columns: number) => {
   });
 };
 
+
+// const calculate = (expression: string) => {
+//   const result = evaluateExpression(expression)
+//   return result
+// }
+
 const setCellValue = (
   sheetNo: number,
   row: number,
@@ -76,7 +83,36 @@ const setCellValue = (
     if (!s.cells[`${row}-${col}`]) {
       s.cells[`${row}-${col}`] = defaultCell();
     }
-    s.cells[`${row}-${col}`].value = value;
+    if (value.startsWith('=')) {
+      s.cells[`${row}-${col}`].formula = value;
+      const variables = getVariables(value.slice(1));
+      console.log("variables", variables)
+      const variableVals = variables.reduce((acc,v) => {
+        const [r, c] = v.slice(1).split('_');
+        acc[v] = s.cells[`${r}-${c}`]?.value || "";
+        return acc;
+      },{});
+      console.log("variableVals", variableVals)
+
+      s.cells[`${row}-${col}`].value = evaluateExpression(value.slice(1), variableVals);
+
+      variables.forEach(v => {
+        const [r, c] = v.slice(1).split('_');
+        if (!s.cells[`${r}-${c}`]) {
+          s.cells[`${r}-${c}`] = defaultCell();
+        }
+        if (!s.cells[`${r}-${c}`].dependents) {
+          s.cells[`${r}-${c}`].dependents = [];
+        }
+        s.cells[`${r}-${c}`].dependents.push(`${row}-${col}`);
+      })      
+    } else {
+      s.cells[`${row}-${col}`].value = value;
+    }
+    s.cells[`${row}-${col}`].dependents?.forEach(dependants => {
+      setCellValue(sheetNo, +dependants.split('-')[0], +dependants.split('-')[1], s.cells[`${row}-${col}`].value)
+    });
+
     return s;
   });
 };

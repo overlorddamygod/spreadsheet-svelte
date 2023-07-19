@@ -10,6 +10,23 @@
   let timeout = null;
 
   onMount(() => {
+    const getVal = variables => {
+      const variablesMap = {};
+      console.log("JS ARRY",variables);
+
+      variables.forEach(variable => {
+        const [row, col] = variable.slice(1).split('_');
+        variablesMap[variable] =
+          $workbook.worksheets[$appState.currentWorkBook].cells[
+            `${row}-${col}`
+          ]?.value;
+      });
+
+      console.log("JS MAP", variablesMap)
+      return variablesMap;
+    };
+
+    globalThis.getVal = getVal;
     const worksheet = document.querySelector('.worksheet');
 
     worksheet.addEventListener('scroll', function () {
@@ -128,7 +145,7 @@
         class="row-index"
         style="grid-row: {i + 2} / span 1; grid-column: 1 / span 1;"
       >
-        {i + 1}
+        {i}
       </div>
     {/each}
   </div>
