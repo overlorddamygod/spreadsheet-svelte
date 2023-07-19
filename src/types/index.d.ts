@@ -1,40 +1,46 @@
+type Align = 'left' | 'center' | 'right';
+
 type Cell = {
-    value: string;
-    formatting: {
-        bold?: boolean;
-        italic?: boolean;
-        underline?: boolean;
-        color?: string;
-        bgColor?: string;
-        align?: 'left' | 'center' | 'right';
-    };
-    rowSpan?: number;
-    colSpan?: number;
-    isMerged?: boolean;
-}
+  value: string;
+  formatting: {
+    bold?: boolean;
+    italic?: boolean;
+    underline?: boolean;
+    color?: string;
+    bgColor?: string;
+    align?: Align;
+  };
+  rowSpan?: number;
+  colSpan?: number;
+  isMerged?: boolean;
+};
 
 type Cells = {
-    [key:string]: Cell;
-}
+  [key: string]: Cell;
+};
 
 type MergedCells = {
-    master: string;
-    slaves: string[];
-}
+  master: string;
+  slaves: string[];
+};
 
 type ColumnsWidth = {
-    [key: number]: number;
-}
-
+  [key: number]: number;
+};
 
 type Sheet = {
-    rows: number;
-    columns: number;
-    cells: Cells;
-    columnsWidth: ColumnsWidth;
-    mergedCells: {
-        [key: string]: MergedCells;
-    };
-}
+  name: string;
+  rows: number;
+  columns: number;
+  cells: Cells;
+  columnsWidth: ColumnsWidth;
+  mergedCells: {
+    [key: string]: MergedCells;
+  };
+};
 
-export {Cell, MergedCells,ColumnsWidth, Sheet}
+type WorkBook = {
+  worksheets: Sheet[];
+};
+
+export {Cell, MergedCells, ColumnsWidth, Sheet, Align, WorkBook};
