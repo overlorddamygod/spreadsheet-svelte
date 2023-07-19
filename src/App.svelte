@@ -1,5 +1,6 @@
 <script lang="ts">
   import {onMount} from 'svelte';
+  import type {Cell, MergedCells, Sheet} from './types';
 
   let pageX, curCol, curColWidth;
 
@@ -10,9 +11,8 @@
 
   onMount(() => {
     const worksheet = document.querySelector('.worksheet');
-    console.log(worksheet);
+
     worksheet.addEventListener('scroll', function () {
-      console.log('SAD');
       const scrollHeight = worksheet.scrollHeight;
       const scrollTop = worksheet.scrollTop;
       const clientHeight = worksheet.clientHeight;
@@ -64,13 +64,15 @@
           return;
         }
 
-        sheet.columnsWidth[curCol.dataset.column] = newWidth;
+        cells.forEach(cell => {
+          if (cell.dataset.ismaster == "true") {
+            return;
+          }
+          sheet.columnsWidth[curCol.dataset.column] = newWidth;
+          cell.style.width = newWidth + 'px';
+        });
 
-        // cells.forEach(cell => {
-        //   cell.style.width = newWidth + 'px';
-        // });
-
-        // curCol.style.width = newWidth + 'px';
+        curCol.style.width = newWidth + 'px';
       }
     });
 
@@ -114,16 +116,75 @@
     });
   };
 
-  const defaultCell = () => {
+  const defaultCell: () => Cell = () => {
     return {
       value: '',
-      align: 'center',
-      color: 'white',
-      backgroundColor: '#242424'
+      formatting: {
+        align: 'center',
+        color: 'white',
+        backgroundColor: '#242424'
+      }
     };
   };
 
-  const sheet = {
+  const mergeCell = (topLeftRow, topLeftCol, bottomRightRow, bottomRightCol) => {
+    const master = `${topLeftRow}-${topLeftCol}`;
+    const slaves = [];
+    for (let i = topLeftRow; i <= bottomRightRow; i++) {
+      for (let j = topLeftCol; j <= bottomRightCol; j++) {
+        if (i === topLeftRow && j === topLeftCol) {
+          continue;
+        }
+        slaves.push(`${i}-${j}`);
+      }
+    }
+    sheet.mergedCells[master] = {
+      master,
+      slaves
+    };
+
+    if (!sheet.cells[master]) {
+      sheet.cells[master] = defaultCell();
+    }
+
+    sheet.cells[master].rowSpan = bottomRightRow - topLeftRow + 1;
+    sheet.cells[master].colSpan = bottomRightCol - topLeftCol + 1;
+
+    slaves.forEach(slave => {
+      if (!sheet.cells[slave]) {
+        sheet.cells[slave] = defaultCell();
+      }
+      sheet.cells[slave].isMerged = true;
+    });
+  }
+
+  const unMergeCell = (row, col) => {
+    console.log(sheet)
+    const master = `${row}-${col}`;
+    const slaves = sheet.mergedCells[master].slaves;
+
+    if (!sheet.cells[master]) {
+      sheet.cells[master] = defaultCell();
+    }
+
+    const updatedSheet = {...sheet};
+
+    delete updatedSheet.cells[master].rowSpan
+    delete updatedSheet.cells[master].colSpan;
+
+    slaves.forEach(slave => {
+      if (!sheet.cells[slave]) {
+        updatedSheet.cells[slave] = defaultCell();
+      }
+      delete updatedSheet.cells[slave].isMerged;
+    });
+
+    delete updatedSheet.mergedCells[master];
+    sheet = updatedSheet;
+  }
+
+
+  let sheet: Sheet = {
     rows: 20,
     columns: 15,
     columnsWidth: {
@@ -132,10 +193,16 @@
     cells: {
       '0-0': {
         value: 'Hello',
-        align: 'center',
+        formatting: {
+          align: 'center',
+          bgColor: '#242424'
+        }
         // color: 'rgba(255, 255, 255, 0.87)',
-        backgroundColor: '#242424'
-      }
+      },
+      
+    },
+    mergedCells: {
+      
     }
   };
 
@@ -143,10 +210,17 @@
     if (!sheet.cells[`${i}-${j}`]) {
       sheet.cells[`${i}-${j}`] = defaultCell();
     }
-    sheet.cells[`${i}-${j}`].align = align;
+    sheet.cells[`${i}-${j}`].formatting.align = align;
   };
 
   $: selectedCell = sheet.cells[`${selectedRow}-${selectedCol}`];
+
+  const getCellWidth = (i,j) => {
+    if (!sheet.mergedCells[`${i}-${j}`]) {
+      return (sheet.columnsWidth[j] || 150)+"px";
+    }
+    return '100%';
+  }
 </script>
 
 <main>
@@ -156,6 +230,8 @@
       <button on:click={() => (sheet.columns -= 1)}>Remove column</button>
       <button on:click={() => (sheet.rows += 1)}>Add row</button>
       <button on:click={() => (sheet.rows -= 1)}>Remove row</button>
+      <button on:click={() => mergeCell(2,2, 4,4)}>Merge</button>
+      <button on:click={() => unMergeCell(2,2)}>Unmerge</button>
       <button
         on:click={() => {
           setCellAlign(selectedRow, selectedCol, 'left');
@@ -195,77 +271,104 @@
     </div>
   </div>
   <section
-    class="flex-1 overflow-auto flex flex-col lol border border-yellow-500"
+    class="flex-1 overflow-auto flex flex-row lol border border-yellow-500"
   >
+    <div class="">
+      <div
+          class="row-index"
+      >
+        
+      </div>
+      {#each {length: sheet.rows} as _, i}
+        <!-- <div class="row"> -->
+        <div
+          class="row-index"
+          style="grid-row: {i + 2} / span 1; grid-column: 1 / span 1;"
+        >
+          {i + 1}
+        </div>
+      {/each}
+    </div>
+
     <div
       class="worksheet grid flex-1 w-full"
       style="grid-template-rows: repeat({sheet.rows +
         1},auto);grid-template-columns: repeat({sheet.columns + 1},auto)"
     >
-      <div class="row-index sticky left-0" />
+      
       {#each {length: sheet.columns} as _, j}
         <div
-          class="cell relative column"
+          class="cell relative column header"
           data-column={j}
-          style="width: {sheet.columnsWidth[j] || 150}px"
+          style="width: {sheet.columnsWidth[j] ||
+            150}px; grid-row: 1 / span 1; grid-column: {j + 1} / span 1;"
         >
           {j}
           <div class="cell-resizer" />
         </div>
       {/each}
       {#each {length: sheet.rows} as _, i}
-        <!-- <div class="row"> -->
-        <div class="row-index">{i + 1}</div>
+
         {#each {length: sheet.columns} as _, j}
           <!-- svelte-ignore a11y-click-events-have-key-events -->
           <!-- svelte-ignore a11y-no-static-element-interactions -->
-          <div
-            class="cell"
-            style="width: {sheet.columnsWidth[j] ||
-              150}px; background-color: {sheet.cells[`${i}-${j}`]?.background ||
-              '#242424'}; color: {sheet.cells[`${i}-${j}`]?.color ||
-              'rgba(255, 255, 255, 0.87)'}"
-            data-row={i}
-            data-col={j}
-            class:justify-start={sheet.cells[`${i}-${j}`]?.align === 'left'}
-            class:justify-center={sheet.cells[`${i}-${j}`]?.align === 'center'}
-            class:justify-end={sheet.cells[`${i}-${j}`]?.align === 'right'}
-            on:click={() => {
-              if (selectedCol === j && selectedRow === i) {
-                return;
-              }
-              selectedRow = i;
-              selectedCol = j;
-            }}
-          >
-            {#if selectedCol === j && selectedRow === i}
-              <input
-                class="w-full h-full background-black"
-                id="cell-input"
-                value={sheet.cells[`${i}-${j}`]?.value || ''}
-                on:change={e => {
-                  if (!sheet.cells[`${i}-${j}`]) {
-                    sheet.cells[`${i}-${j}`] = defaultCell();
-                  }
-                  sheet.cells[`${i}-${j}`].value = e.target.value;
-                }}
-                on:blur={() => {
-                  selectedCol = null;
-                  selectedRow = null;
-                }}
-                on:keydown={e => {
-                  if (e.key === 'Enter') {
+          {#if !(sheet.cells[`${i}-${j}`]?.isMerged && sheet.cells[`${i}-${j}`]?.isMerged)}
+          <!-- Merged -->
+            <div
+              class="cell"
+              style="background-color: {sheet.cells[`${i}-${j}`]
+                ?.formatting?.bgColor || '#242424'}; color: {sheet.cells[
+                `${i}-${j}`
+              ]?.formatting?.color || 'rgba(255, 255, 255, 0.87)'};
+                grid-row: {i + 2} / span {sheet.cells[`${i}-${j}`]?.rowSpan ||
+                1}; grid-column: {j + 1} / span {sheet.cells[`${i}-${j}`]
+                ?.colSpan || 1};"
+              data-row={i}
+              data-col={j}
+              data-isMaster={!!sheet.mergedCells[`${i}-${j}`]}
+              class:justify-start={sheet.cells[`${i}-${j}`]?.formatting
+                ?.align === 'left'}
+              class:justify-center={sheet.cells[`${i}-${j}`]?.formatting
+                ?.align === 'center'}
+              class:justify-end={sheet.cells[`${i}-${j}`]?.formatting?.align ===
+                'right'}
+              on:click={() => {
+                if (selectedCol === j && selectedRow === i) {
+                  return;
+                }
+                selectedRow = i;
+                selectedCol = j;
+              }}
+            >
+              {#if selectedCol === j && selectedRow === i}
+                <input
+                  class="w-full h-full background-black"
+                  id="cell-input"
+                  value={sheet.cells[`${i}-${j}`]?.value || ''}
+                  on:change={e => {
+                    if (!sheet.cells[`${i}-${j}`]) {
+                      sheet.cells[`${i}-${j}`] = defaultCell();
+                    }
+                    sheet.cells[`${i}-${j}`].value = e.target.value;
+                  }}
+                  on:blur={() => {
                     selectedCol = null;
                     selectedRow = null;
-                  }
-                }}
-              />
-            {:else}
-              <div class="ignore-select">
-                {sheet.cells[`${i}-${j}`]?.value || ''}
-              </div>
-            {/if}
-          </div>
+                  }}
+                  on:keydown={e => {
+                    if (e.key === 'Enter') {
+                      selectedCol = null;
+                      selectedRow = null;
+                    }
+                  }}
+                />
+              {:else}
+                <div class="ignore-select">
+                  {sheet.cells[`${i}-${j}`]?.value || ''}
+                </div>
+              {/if}
+            </div>
+          {/if}
         {/each}
         <!-- </div> -->
       {/each}
@@ -293,27 +396,11 @@
   .header {
     position: sticky;
     top: 0;
-    z-index: 1;
-  }
-
-  .horizontal-scroll-container {
-    display: flex;
-    overflow-x: auto;
-    scroll-behavior: smooth;
+    /* z-index: 1; */
   }
 
   .worksheet {
     overflow: scroll;
-  }
-  .back {
-    z-index: -1;
-  }
-  .row {
-    display: grid;
-    grid-template-columns: repeat(16, auto);
-    /* grid-template-rows: repeat(20, auto); */
-    /* width: 100%; */
-    /* height: 100%; */
   }
 
   .row-index {
@@ -323,21 +410,15 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    /* position: sticky; */
-    /* left: 0; */
-  }
-  .header .column {
-    width: 150px;
-    height: 50px;
-    border: 1px solid black;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    position: sticky;
+    left: 0;
   }
 
   .cell {
-    width: 150px;
-    height: 50px;
+    /* min-width: 150px; */
+    min-height: 50px;
+    height: 100%;
+    /* width: 100%; */
     border: 1px solid black;
     display: flex;
     padding: 5px;
@@ -367,4 +448,10 @@
     /* table height */
     height: 50px;
   }
+
+  /* [data-ismaster="true"] {
+    background-color: red !important;
+    width: 100% !important;
+    border: 2px solid red;
+  } */
 </style>
